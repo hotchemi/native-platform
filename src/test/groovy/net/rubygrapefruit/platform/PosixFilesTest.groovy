@@ -19,6 +19,7 @@ package net.rubygrapefruit.platform
 import net.rubygrapefruit.platform.internal.Platform
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
+import spock.lang.Ignore
 import spock.lang.IgnoreIf
 
 import java.nio.file.LinkOption
@@ -59,6 +60,49 @@ class PosixFilesTest extends AbstractFilesTest {
 
         where:
         fileName << ["test.txt", "test\u03b1\u2295.txt"]
+    }
+
+    def "can stat a unicode named file"() {
+        def testFile = tmpDir.newFile(fileName)
+        def attributes = attributes(testFile)
+
+        when:
+        def stat = files.stat(testFile)
+
+        then:
+        stat.type == FileInfo.Type.File
+        stat.mode == mode(attributes)
+        stat.uid != 0
+        stat.gid >= 0
+        stat.size == testFile.size()
+        stat.lastModifiedTime == attributes.lastModifiedTime().toMillis()
+        toJavaFileTime(stat.lastModifiedTime) == testFile.lastModified()
+        stat.blockSize
+
+        where:
+        fileName << ["القيادة والسيطرة - الإدارة.lnk\"", "\\ud867\\ude3d.txt", "\\ud83d\\ude00.txt"]
+    }
+
+    @Ignore
+    def "can't stat a surrogate pairs named file"() {
+        def testFile = tmpDir.newFile(fileName)
+        def attributes = attributes(testFile)
+
+        when:
+        def stat = files.stat(testFile)
+
+        then:
+        stat.type == FileInfo.Type.File
+        stat.mode == mode(attributes)
+        stat.uid != 0
+        stat.gid >= 0
+        stat.size == testFile.size()
+        stat.lastModifiedTime == attributes.lastModifiedTime().toMillis()
+        toJavaFileTime(stat.lastModifiedTime) == testFile.lastModified()
+        stat.blockSize
+
+        where:
+        fileName << ["𩸽.txt", "😀.txt"]
     }
 
     def "can stat a directory"() {
